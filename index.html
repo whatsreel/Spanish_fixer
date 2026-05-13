@@ -381,6 +381,20 @@
       border-color: #60a5fa;
       color: #60a5fa;
     }
+
+    .btn-replay {
+      background: none;
+      border: none;
+      color: #3b5a7a;
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      line-height: 1;
+    }
+
+    .btn-replay:active { color: #60a5fa; }
   </style>
 </head>
 <body>
@@ -712,8 +726,11 @@ function renderExchange(original, parsed) {
       <div class="explanation-text${looksGood ? ' looks-good' : ''}">${escHtml(parsed.explanation)}</div>
     </div>
     <div class="card-reply">
-      <span class="reply-label">Coach says <span style="font-weight:400;color:#3b5a7a;font-size:0.65rem;">(tap to replay)</span></span>
-      <div class="reply-spanish tappable" data-reply="${escAttr(parsed.reply)}" style="cursor:pointer;">${escHtml(parsed.reply)}</div>
+      <span class="reply-label" style="display:flex;align-items:center;justify-content:space-between;">
+        Coach says
+        <button class="btn-replay tappable" data-reply="${escAttr(parsed.reply)}" title="Replay">▶ replay</button>
+      </span>
+      <div class="reply-spanish">${escHtml(parsed.reply)}</div>
       <div class="reply-english">${escHtml(parsed.reply_translation)}</div>
     </div>
   `;
