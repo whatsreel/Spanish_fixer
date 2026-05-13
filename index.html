@@ -448,6 +448,7 @@ let audioChunks   = [];
 let isRecording   = false;
 let isProcessing  = false;
 let audioEnabled  = localStorage.getItem('sp_coach_audio') !== 'off';
+let currentAudio  = null;
 
 // Conversation history for Claude (system excluded — passed separately)
 let history = [];
@@ -723,6 +724,11 @@ function renderExchange(original, parsed) {
 
 // ── TTS ───────────────────────────────────────────────────────────────────
 async function speakReply(text) {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+    return;
+  }
   try {
     const res = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
@@ -733,13 +739,14 @@ async function speakReply(text) {
       body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text })
     });
     if (!res.ok) return;
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    audio.onended = () => URL.revokeObjectURL(url);
+    currentAudio = audio;
+    audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; };
     await audio.play();
   } catch {
-    // TTS failure is non-fatal — silently skip
+    currentAudio = null;
   }
 }
 
