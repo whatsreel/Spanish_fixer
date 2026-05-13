@@ -712,7 +712,7 @@ function renderExchange(original, parsed) {
     </div>
     <div class="card-reply">
       <span class="reply-label">Coach says <span style="font-weight:400;color:#3b5a7a;font-size:0.65rem;">(tap to replay)</span></span>
-      <div class="reply-spanish" onclick="speakReply(${JSON.stringify(parsed.reply)})" style="cursor:pointer;">${escHtml(parsed.reply)}</div>
+      <div class="reply-spanish tappable" data-reply="${escAttr(parsed.reply)}" style="cursor:pointer;">${escHtml(parsed.reply)}</div>
       <div class="reply-english">${escHtml(parsed.reply_translation)}</div>
     </div>
   `;
@@ -785,6 +785,16 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+function escAttr(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+document.getElementById('conversation').addEventListener('click', e => {
+  const el = e.target.closest('.tappable');
+  if (el && el.dataset.reply) speakReply(el.dataset.reply);
+});
 </script>
 </body>
 </html>
