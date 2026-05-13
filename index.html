@@ -469,15 +469,30 @@ function startApp() {
   anthropicKey = ak;
   openaiKey    = ok;
 
+  localStorage.setItem('sp_coach_ak', ak);
+  localStorage.setItem('sp_coach_ok', ok);
+
   document.getElementById('setup-screen').style.display = 'none';
   const app = document.getElementById('app-screen');
   app.style.display = 'flex';
 }
 
+function loadSavedKeys() {
+  const ak = localStorage.getItem('sp_coach_ak');
+  const ok = localStorage.getItem('sp_coach_ok');
+  if (ak && ok) {
+    anthropicKey = ak;
+    openaiKey    = ok;
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'flex';
+  }
+}
+
+loadSavedKeys();
+
 function showSettings() {
   document.getElementById('app-screen').style.display = 'none';
-  const setup = document.getElementById('setup-screen');
-  setup.style.display = 'flex';
+  document.getElementById('setup-screen').style.display = 'flex';
   document.getElementById('key-anthropic').value = anthropicKey;
   document.getElementById('key-openai').value    = openaiKey;
 }
