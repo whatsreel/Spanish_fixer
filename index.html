@@ -365,6 +365,22 @@
       text-decoration: underline;
       text-underline-offset: 3px;
     }
+
+    #btn-audio {
+      background: none;
+      border: 1px solid #2d2d3d;
+      border-radius: 8px;
+      color: #6b7280;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    #btn-audio.on {
+      border-color: #60a5fa;
+      color: #60a5fa;
+    }
   </style>
 </head>
 <body>
@@ -382,8 +398,8 @@
     <input type="password" id="key-openai" placeholder="sk-..." autocomplete="off">
 
     <p class="key-note">
-      Keys are never sent to any server — only directly to Anthropic and OpenAI from your browser.
-      They are cleared when you close the tab.
+      Keys are saved in your browser's local storage and go directly to Anthropic and OpenAI.
+      Never sent to any other server.
     </p>
   </div>
 
@@ -394,7 +410,10 @@
 <div id="app-screen">
   <header>
     <h2>🇪🇸 Spanish Coach</h2>
-    <button id="btn-settings" onclick="showSettings()">⚙ Keys</button>
+    <div style="display:flex;gap:8px;">
+      <button id="btn-audio" onclick="toggleAudio()">🔇 Audio</button>
+      <button id="btn-settings" onclick="showSettings()">⚙ Keys</button>
+    </div>
   </header>
 
   <div id="conversation"></div>
@@ -428,6 +447,7 @@ let mediaRecorder = null;
 let audioChunks   = [];
 let isRecording   = false;
 let isProcessing  = false;
+let audioEnabled  = localStorage.getItem('sp_coach_audio') !== 'off';
 
 // Conversation history for Claude (system excluded — passed separately)
 let history = [];
@@ -489,6 +509,7 @@ function loadSavedKeys() {
 }
 
 loadSavedKeys();
+updateAudioBtn();
 
 function showSettings() {
   document.getElementById('app-screen').style.display = 'none';
@@ -657,6 +678,7 @@ async function getCoachResponse(userText) {
     history.push({ role: 'assistant', content: parsed.reply });
 
     renderExchange(userText, parsed);
+    if (audioEnabled) await speakReply(parsed.reply);
     setStatus('Tap the mic and speak', '');
   } catch (err) {
     // Roll back the user message on failure
@@ -693,6 +715,41 @@ function renderExchange(original, parsed) {
 
   conv.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+// ── TTS ───────────────────────────────────────────────────────────────────
+async function speakReply(text) {
+  try {
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text })
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play();
+  } catch {
+    // TTS failure is non-fatal — silently skip
+  }
+}
+
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  localStorage.setItem('sp_coach_audio', audioEnabled ? 'on' : 'off');
+  updateAudioBtn();
+}
+
+function updateAudioBtn() {
+  const btn = document.getElementById('btn-audio');
+  if (!btn) return;
+  btn.textContent = audioEnabled ? '🔊 Audio' : '🔇 Audio';
+  btn.classList.toggle('on', audioEnabled);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
