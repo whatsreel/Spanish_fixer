@@ -881,27 +881,10 @@ function wrapWords(text) {
   }).join('');
 }
 
-let longPressTimer = null;
-const LONG_PRESS_MS = 500;
 
-document.getElementById('conversation').addEventListener('touchstart', e => {
+document.getElementById('conversation').addEventListener('click', e => {
   const word = e.target.closest('.word-tap');
-  if (!word) return;
-  longPressTimer = setTimeout(() => {
-    longPressTimer = null;
-    e.preventDefault();
-    showWordPopup(word.dataset.word, word);
-  }, LONG_PRESS_MS);
-}, { passive: false });
-
-document.getElementById('conversation').addEventListener('touchend', () => {
-  clearTimeout(longPressTimer);
-  longPressTimer = null;
-});
-
-document.getElementById('conversation').addEventListener('touchmove', () => {
-  clearTimeout(longPressTimer);
-  longPressTimer = null;
+  if (word) showWordPopup(word.dataset.word, word);
 });
 
 document.addEventListener('touchstart', e => {
