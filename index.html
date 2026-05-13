@@ -707,8 +707,8 @@ function renderExchange(original, parsed) {
       <div class="explanation-text${looksGood ? ' looks-good' : ''}">${escHtml(parsed.explanation)}</div>
     </div>
     <div class="card-reply">
-      <span class="reply-label">Coach says</span>
-      <div class="reply-spanish">${escHtml(parsed.reply)}</div>
+      <span class="reply-label">Coach says <span style="font-weight:400;color:#3b5a7a;font-size:0.65rem;">(tap to replay)</span></span>
+      <div class="reply-spanish" onclick="speakReply(${JSON.stringify(parsed.reply)})" style="cursor:pointer;">${escHtml(parsed.reply)}</div>
       <div class="reply-english">${escHtml(parsed.reply_translation)}</div>
     </div>
   `;
