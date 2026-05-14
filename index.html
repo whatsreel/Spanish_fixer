@@ -510,8 +510,9 @@ let mediaRecorder = null;
 let audioChunks   = [];
 let isRecording   = false;
 let isProcessing  = false;
-let audioEnabled  = localStorage.getItem('sp_coach_audio') !== 'off';
-let currentAudio  = null;
+// audioMode: 'off' | 'reply' | 'full'
+let audioMode    = localStorage.getItem('sp_coach_audio') || 'reply';
+let currentAudio = null;
 
 // Conversation history for Claude (system excluded — passed separately)
 let history = [];
@@ -746,7 +747,13 @@ async function getCoachResponse(userText) {
     history.push({ role: 'assistant', content: parsed.reply });
 
     renderExchange(userText, parsed);
-    if (audioEnabled) await speakReply(parsed.reply);
+    if (audioMode === 'reply') {
+      await speakReply(parsed.reply);
+    } else if (audioMode === 'full') {
+      await speakReply(parsed.corrected);
+      await speakReply(parsed.explanation);
+      await speakReply(parsed.reply);
+    }
     setStatus('Tap the mic and speak', '');
   } catch (err) {
     // Roll back the user message on failure
@@ -817,16 +824,18 @@ async function speakReply(text) {
 }
 
 function toggleAudio() {
-  audioEnabled = !audioEnabled;
-  localStorage.setItem('sp_coach_audio', audioEnabled ? 'on' : 'off');
+  const cycle = { 'off': 'reply', 'reply': 'full', 'full': 'off' };
+  audioMode = cycle[audioMode] || 'reply';
+  localStorage.setItem('sp_coach_audio', audioMode);
   updateAudioBtn();
 }
 
 function updateAudioBtn() {
   const btn = document.getElementById('btn-audio');
   if (!btn) return;
-  btn.textContent = audioEnabled ? '🔊 Audio' : '🔇 Audio';
-  btn.classList.toggle('on', audioEnabled);
+  const labels = { off: '🔇 Off', reply: '🔊 Reply', full: '🎧 Full' };
+  btn.textContent = labels[audioMode] || '🔊 Reply';
+  btn.classList.toggle('on', audioMode !== 'off');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
