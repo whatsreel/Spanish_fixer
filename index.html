@@ -704,10 +704,9 @@ async function sendText() {
   await getCoachResponse(text);
 }
 
-// ── Claude API ─────────────────────────────────────────────────────────────
+// ── Claude API (streaming) ─────────────────────────────────────────────────
 async function getCoachResponse(userText) {
   try {
-    // Add to history
     history.push({ role: 'user', content: userText });
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -721,6 +720,7 @@ async function getCoachResponse(userText) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 512,
+        stream: true,
         system: SYSTEM_PROMPT,
         messages: history
       })
@@ -731,22 +731,39 @@ async function getCoachResponse(userText) {
       throw new Error(err?.error?.message || `Claude error ${res.status}`);
     }
 
-    const data    = await res.json();
-    const rawText = data.content?.[0]?.text || '';
+    const exchangeDiv = createStreamingCard(userText);
+    setStatus('', '');
 
-    // Parse JSON — strip any accidental markdown fences
-    const jsonStr = rawText.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      throw new Error('Claude returned non-JSON response');
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (!data || data === '[DONE]') continue;
+        try {
+          const evt = JSON.parse(data);
+          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+            accumulated += evt.delta.text;
+            updateStreamingReply(exchangeDiv, accumulated);
+          }
+        } catch {}
+      }
     }
 
-    // Add assistant reply to history (use the Spanish reply for context continuity)
-    history.push({ role: 'assistant', content: parsed.reply });
+    const jsonStr = accumulated.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(jsonStr); }
+    catch { throw new Error('Claude returned non-JSON response'); }
 
-    renderExchange(userText, parsed);
+    history.push({ role: 'assistant', content: parsed.reply });
+    finalizeExchange(exchangeDiv, userText, parsed);
+
     if (audioMode === 'reply') {
       await speakReply(parsed.reply);
     } else if (audioMode === 'full') {
@@ -756,7 +773,6 @@ async function getCoachResponse(userText) {
     }
     setStatus('Tap the mic and speak', '');
   } catch (err) {
-    // Roll back the user message on failure
     history.pop();
     setStatus(`Error: ${err.message}`, 'error');
   } finally {
@@ -766,14 +782,31 @@ async function getCoachResponse(userText) {
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
-function renderExchange(original, parsed) {
+function createStreamingCard(original) {
   const conv = document.getElementById('conversation');
-
-  const div = document.createElement('div');
+  const div  = document.createElement('div');
   div.className = 'exchange';
+  div.innerHTML = `
+    <div class="bubble-user">${escHtml(original)}</div>
+    <div class="card-reply">
+      <span class="reply-label">Coach says</span>
+      <div class="reply-spanish streaming-text" style="color:#4a5568;font-style:italic;">…</div>
+    </div>`;
+  conv.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return div;
+}
 
+function updateStreamingReply(div, accumulated) {
+  const match = accumulated.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (!match) return;
+  const text = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\t/g, '\t');
+  const el = div.querySelector('.streaming-text');
+  if (el) { el.textContent = text; el.style.color = ''; el.style.fontStyle = ''; }
+}
+
+function finalizeExchange(div, original, parsed) {
   const looksGood = parsed.explanation?.toLowerCase().includes('looks good');
-
   div.innerHTML = `
     <div class="bubble-user">${escHtml(original)}</div>
     <div class="card-correction">
@@ -788,10 +821,7 @@ function renderExchange(original, parsed) {
       </span>
       <div class="reply-spanish">${wrapWords(parsed.reply)}</div>
       <div class="reply-english">${escHtml(parsed.reply_translation)}</div>
-    </div>
-  `;
-
-  conv.appendChild(div);
+    </div>`;
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
