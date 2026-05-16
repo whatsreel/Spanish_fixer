@@ -366,7 +366,7 @@
       text-underline-offset: 3px;
     }
 
-    #btn-audio {
+    #btn-audio, #btn-stt {
       background: none;
       border: 1px solid #2d2d3d;
       border-radius: 8px;
@@ -377,7 +377,7 @@
       transition: border-color 0.2s, color 0.2s;
     }
 
-    #btn-audio.on {
+    #btn-audio.on, #btn-stt.on {
       border-color: #60a5fa;
       color: #60a5fa;
     }
@@ -472,6 +472,7 @@
   <header>
     <h2>🇪🇸 Spanish Coach</h2>
     <div style="display:flex;gap:8px;">
+      <button id="btn-stt" onclick="toggleStt()">🎙 Whisper</button>
       <button id="btn-audio" onclick="toggleAudio()">🔇 Audio</button>
       <button id="btn-settings" onclick="showSettings()">⚙ Keys</button>
     </div>
@@ -510,6 +511,8 @@ let mediaRecorder = null;
 let audioChunks   = [];
 let isRecording   = false;
 let isProcessing  = false;
+// sttMode: 'whisper' | 'builtin'
+let sttMode = localStorage.getItem('sp_coach_stt') || 'whisper';
 // audioMode: 'off' | 'reply' | 'full'
 let audioMode    = localStorage.getItem('sp_coach_audio') || 'reply';
 let currentAudio = null;
@@ -581,6 +584,7 @@ function loadSavedKeys() {
 
 loadSavedKeys();
 updateAudioBtn();
+updateSttBtn();
 
 function showSettings() {
   document.getElementById('app-screen').style.display = 'none';
@@ -597,7 +601,10 @@ function toggleTextInput() {
 // ── Recording ─────────────────────────────────────────────────────────────
 async function toggleRecording() {
   if (isProcessing) return;
-
+  if (sttMode === 'builtin') {
+    startBuiltinRecognition();
+    return;
+  }
   if (!isRecording) {
     await startRecording();
   } else {
@@ -652,6 +659,66 @@ function stopRecording() {
   btn.classList.add('processing');
   btn.innerHTML = `<div class="spinner"></div>`;
   setStatus('Transcribing…', 'processing');
+}
+
+// ── Built-in Speech Recognition ───────────────────────────────────────────
+function startBuiltinRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    setStatus('Built-in speech not supported — switch to Whisper', 'error');
+    return;
+  }
+  const rec = new SR();
+  rec.lang = 'es';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  const btn = document.getElementById('mic-btn');
+  btn.classList.add('recording');
+  btn.innerHTML = `<svg class="mic-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
+  setStatus('Listening…', 'recording');
+  isRecording = true;
+
+  rec.onresult = e => {
+    const transcript = e.results[0][0].transcript.trim();
+    isRecording  = false;
+    isProcessing = true;
+    btn.classList.remove('recording');
+    btn.classList.add('processing');
+    btn.innerHTML = `<div class="spinner"></div>`;
+    setStatus('Getting feedback…', 'processing');
+    getCoachResponse(transcript);
+  };
+
+  rec.onerror = e => {
+    isRecording  = false;
+    isProcessing = false;
+    setStatus(`Speech error: ${e.error}`, 'error');
+    resetMicBtn();
+  };
+
+  rec.onend = () => {
+    if (isRecording) {
+      isRecording = false;
+      resetMicBtn();
+      setStatus('No speech detected — try again', 'error');
+    }
+  };
+
+  rec.start();
+}
+
+function toggleStt() {
+  sttMode = sttMode === 'whisper' ? 'builtin' : 'whisper';
+  localStorage.setItem('sp_coach_stt', sttMode);
+  updateSttBtn();
+}
+
+function updateSttBtn() {
+  const btn = document.getElementById('btn-stt');
+  if (!btn) return;
+  btn.textContent = sttMode === 'whisper' ? '🎙 Whisper' : '🎙 Built-in';
+  btn.classList.toggle('on', sttMode === 'builtin');
 }
 
 // ── Audio → Text (Whisper) ─────────────────────────────────────────────────
