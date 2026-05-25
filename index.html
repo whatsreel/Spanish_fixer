@@ -105,7 +105,7 @@
     #app-screen {
       display: none;
       flex-direction: column;
-      height: 100vh;
+      height: 100dvh;
       max-width: 640px;
       margin: 0 auto;
       width: 100%;
@@ -492,10 +492,8 @@
       </svg>
     </button>
 
-    <span class="toggle-text" onclick="toggleTextInput()">or type instead</span>
-
-    <div id="text-row" style="display:none;">
-      <input type="text" id="text-input" placeholder="Type Spanish or ask a question…" onkeydown="if(event.key==='Enter') sendText()">
+    <div id="text-row">
+      <input type="text" id="text-input" placeholder="Or type Spanish here…" onkeydown="if(event.key==='Enter') sendText()">
       <button id="btn-send" onclick="sendText()">Send</button>
     </div>
   </div>
@@ -593,10 +591,7 @@ function showSettings() {
   document.getElementById('key-openai').value    = openaiKey;
 }
 
-function toggleTextInput() {
-  const row = document.getElementById('text-row');
-  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
-}
+
 
 // ── Recording ─────────────────────────────────────────────────────────────
 async function toggleRecording() {
