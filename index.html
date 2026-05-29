@@ -382,6 +382,18 @@
       color: #60a5fa;
     }
 
+    .btn-ask-more {
+      background: none;
+      border: 1px solid #4a3a6a;
+      border-radius: 6px;
+      color: #a78bfa;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+
     .btn-replay {
       background: none;
       border: none;
@@ -872,7 +884,10 @@ function finalizeExchange(div, original, parsed) {
   div.innerHTML = `
     <div class="bubble-user">${escHtml(original)}</div>
     <div class="card-correction">
-      <span class="correction-label">Correction</span>
+      <span class="correction-label" style="display:flex;align-items:center;justify-content:space-between;">
+        Correction
+        ${!looksGood ? `<button class="btn-ask-more" data-original="${escAttr(original)}" data-corrected="${escAttr(parsed.corrected)}" data-explanation="${escAttr(parsed.explanation)}">Ask more</button>` : ''}
+      </span>
       <div class="corrected-text">${escHtml(parsed.corrected)}</div>
       <div class="explanation-text${looksGood ? ' looks-good' : ''}">${escHtml(parsed.explanation)}</div>
     </div>
@@ -966,8 +981,16 @@ function escAttr(str) {
 }
 
 document.getElementById('conversation').addEventListener('click', e => {
-  const el = e.target.closest('.tappable');
-  if (el && el.dataset.reply) speakReply(el.dataset.reply);
+  const replay = e.target.closest('.tappable');
+  if (replay && replay.dataset.reply) { speakReply(replay.dataset.reply); return; }
+
+  const ask = e.target.closest('.btn-ask-more');
+  if (ask && !isProcessing) {
+    const msg = `Can you explain that correction in more detail? I said "${ask.dataset.original}", you corrected it to "${ask.dataset.corrected}". You said: ${ask.dataset.explanation}. Can you give me more context and an example or two?`;
+    isProcessing = true;
+    setStatus('Getting feedback…', 'processing');
+    getCoachResponse(msg);
+  }
 });
 
 // ── Word lookup ────────────────────────────────────────────────────────────
