@@ -523,8 +523,8 @@ let isRecording   = false;
 let isProcessing  = false;
 // sttMode: 'whisper' | 'builtin'
 let sttMode = localStorage.getItem('sp_coach_stt') || 'whisper';
-// audioMode: 'off' | 'reply' | 'full'
-let audioMode    = localStorage.getItem('sp_coach_audio') || 'reply';
+// audioMode: 'off' | 'on'
+let audioMode    = localStorage.getItem('sp_coach_audio') === 'off' ? 'off' : 'on';
 let currentAudio = null;
 
 // Conversation history for Claude (system excluded — passed separately)
@@ -842,9 +842,7 @@ async function getCoachResponse(userText) {
     history.push({ role: 'assistant', content: parsed.reply });
     finalizeExchange(exchangeDiv, userText, parsed);
 
-    if (audioMode === 'reply') {
-      await speakReply(parsed.reply);
-    } else if (audioMode === 'full') {
+    if (audioMode !== 'off') {
       await speakReply(parsed.spoken_response || parsed.reply);
     }
     setStatus('Tap the mic and speak', '');
@@ -883,21 +881,22 @@ function updateStreamingReply(div, accumulated) {
 
 function finalizeExchange(div, original, parsed) {
   const looksGood = parsed.explanation?.toLowerCase().includes('looks good');
+  const spoken    = parsed.spoken_response || parsed.reply;
   div.innerHTML = `
     <div class="bubble-user">${escHtml(original)}</div>
-    <div class="card-correction">
-      <span class="correction-label" style="display:flex;align-items:center;justify-content:space-between;">
-        Correction
-        ${!looksGood ? `<button class="btn-ask-more" data-original="${escAttr(original)}" data-corrected="${escAttr(parsed.corrected)}" data-explanation="${escAttr(parsed.explanation)}">Ask more</button>` : ''}
-      </span>
-      <div class="corrected-text">${escHtml(parsed.corrected)}</div>
-      <div class="explanation-text${looksGood ? ' looks-good' : ''}">${escHtml(parsed.explanation)}</div>
-    </div>
     <div class="card-reply">
       <span class="reply-label" style="display:flex;align-items:center;justify-content:space-between;">
-        Coach says
-        <button class="btn-replay tappable" data-reply="${escAttr(parsed.reply)}" title="Replay">▶ replay</button>
+        Coach
+        <span style="display:flex;gap:6px;">
+          <button class="btn-replay tappable" data-reply="${escAttr(spoken)}" title="Replay">▶ replay</button>
+          ${!looksGood ? `<button class="btn-ask-more" data-original="${escAttr(original)}" data-corrected="${escAttr(parsed.corrected)}" data-explanation="${escAttr(parsed.explanation)}">Ask more</button>` : ''}
+        </span>
       </span>
+      ${!looksGood ? `
+      <div style="font-size:0.78rem;color:#a78bfa;margin-bottom:4px;">
+        ✎ ${escHtml(parsed.corrected)}
+        <span style="color:#6b7280;font-style:italic;"> — ${escHtml(parsed.explanation)}</span>
+      </div>` : `<div style="font-size:0.78rem;color:#6ee7b7;margin-bottom:4px;">✓ Looks good!</div>`}
       <div class="reply-spanish">${wrapWords(parsed.reply)}</div>
       <div class="reply-english">${escHtml(parsed.reply_translation)}</div>
     </div>`;
@@ -934,8 +933,7 @@ async function speakReply(text) {
 }
 
 function toggleAudio() {
-  const cycle = { 'off': 'reply', 'reply': 'full', 'full': 'off' };
-  audioMode = cycle[audioMode] || 'reply';
+  audioMode = audioMode === 'off' ? 'on' : 'off';
   localStorage.setItem('sp_coach_audio', audioMode);
   updateAudioBtn();
 }
@@ -943,9 +941,8 @@ function toggleAudio() {
 function updateAudioBtn() {
   const btn = document.getElementById('btn-audio');
   if (!btn) return;
-  const labels = { off: '🔇 Off', reply: '🔊 Reply', full: '🎧 Full' };
-  btn.textContent = labels[audioMode] || '🔊 Reply';
-  btn.classList.toggle('on', audioMode !== 'off');
+  btn.textContent = audioMode === 'on' ? '🔊 Audio' : '🔇 Audio';
+  btn.classList.toggle('on', audioMode === 'on');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
