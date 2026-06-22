@@ -918,12 +918,13 @@ async function speakReply(text) {
         'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text, speed: 0.65 })
+      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text })
     });
     if (!res.ok) return;
     const blob  = await res.blob();
     const url   = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.playbackRate = 0.8;
     currentAudio = audio;
     audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; };
     await audio.play();
