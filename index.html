@@ -755,6 +755,7 @@ async function processAudio() {
     const transcript = data.text?.trim();
 
     if (!transcript) {
+      isProcessing = false;
       setStatus('No speech detected — try again', 'error');
       resetMicBtn();
       return;
@@ -764,6 +765,7 @@ async function processAudio() {
     await getCoachResponse(transcript);
 
   } catch (err) {
+    isProcessing = false;
     setStatus(`Error: ${err.message}`, 'error');
     resetMicBtn();
   }
