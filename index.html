@@ -916,7 +916,7 @@ async function speakReply(text) {
         'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text, speed: 0.85 })
+      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: text, speed: 0.5 })
     });
     if (!res.ok) return;
     const blob  = await res.blob();
